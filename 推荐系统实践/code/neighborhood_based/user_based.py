@@ -1,13 +1,12 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-import multiprocessing
 import os
 import random
 import math
 
 import time
 from flask import json
-import thread
+
 
 def split_data(data, M, k, seed):
     train = []
@@ -21,8 +20,28 @@ def split_data(data, M, k, seed):
     return train, test
 
 
+def make_matrix(users, N, C):
+    """生成矩阵"""
+    for u in users:
+        if u not in N:
+            N[u] = 1
+        else:
+            N[u] += 1
+        if u not in C:
+            C[u] = dict()
+        for v in users:
+            if u == v:
+                continue
+            if v not in C[u]:
+                C[u][v] = 1
+            else:
+                C[u][v] += 1
+
+
 def user_similarity(train):
+    """计算用户相似度  利用余弦相似度"""
     # build inverse table for item_users
+    st = time.time()
     item_users = dict()
     for data in train:
         user, item = data['user'], data['item']
@@ -35,20 +54,8 @@ def user_similarity(train):
     C = dict()
     N = dict()
     for item, users in item_users.items():
-        for u in users:
-            if u not in N:
-                N[u] = 1
-            else:
-                N[u] += 1
-            if u not in C:
-                C[u] = dict()
-            for v in users:
-                if u == v:
-                    continue
-                if v not in C[u]:
-                    C[u][v] = 1
-                else:
-                    C[u][v] += 1
+        # TODO 待优化 ，多线程 ，并行计算
+        make_matrix(users, N, C)
 
     # calculate final similarity matrix W  余弦相似度
     W = dict()
@@ -57,14 +64,12 @@ def user_similarity(train):
             W[u] = dict()
         for v, cuv in relate_users.items():
             W[u][v] = cuv / math.sqrt(N[u] * N[v]) * 1.0
-
+    print '计算用户相似度耗时，{%fs}' % (time.time() - st)
     return W
 
 
-def recommend(user, train, top):
-    file1 = open(os.path.abspath('.') + '/data/123.txt')
-    W = json.loads(file1.readlines()[0])
-    file1.close()
+def recommend(user, train, W, top):
+    """推荐"""
     rank = dict()
     interacted_items = [d['item'] for d in train[user]]
 
@@ -79,21 +84,25 @@ def recommend(user, train, top):
                 rank[i] = wuv * float(1)
             else:
                 rank[i] += wuv * float(1)
-    rank = sorted(rank.iteritems(), key=lambda d: d[1], reverse=True)
+    rank = sorted(rank.iteritems(), key=lambda d: d[1], reverse=True)[0:top]
 
     return rank
 
 
 def recall(train, test, N):
-    '''召回率'''
-    print "%s: %s" % ('recall', time.ctime(time.time()))
+    """召回率"""
+    print "%s: %s" % ('recall', time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
+    file1 = open(os.path.abspath('.') + '/data/123.txt')
+    W = json.loads(file1.readlines()[0])
+    file1.close()
+
     hit = 0
     all = 0
     for user in train.keys():
         if user not in test:
             continue
         tu = [d['item'] for d in test[user]]
-        rank = recommend(user, train, N)
+        rank = recommend(user, train, W, N)
         trainu = [d[0] for d in rank]
         hit += len(list(set(tu).intersection(set(trainu))))
         all += len(tu)
@@ -101,18 +110,23 @@ def recall(train, test, N):
     print hit
     print all
     print hit / (all * 1.0)
+    print '计算召回率耗时，{%fs}' % (time.time() - st)
 
 
 def precision(train, test, N):
-    '''准确率'''
-    print "%s: %s" % ('precision', time.ctime(time.time()))
+    """准确率"""
+    print "%s: %s" % ('precision', time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
+    file1 = open(os.path.abspath('.') + '/data/123.txt')
+    W = json.loads(file1.readlines()[0])
+    file1.close()
     hit = 0
     all = 0
+
     for user in train.keys():
         if user not in test:
             continue
         tu = [d['item'] for d in test[user]]
-        rank = recommend(user, train, N)
+        rank = recommend(user, train, W, N)
         trainu = [d[0] for d in rank]
         hit += len(list(set(tu).intersection(set(trainu))))
         all += len(trainu)
@@ -120,15 +134,63 @@ def precision(train, test, N):
     print hit
     print all
     print hit / (all * 1.0)
+    print '计算精确率耗时，{%fs}' % (time.time() - st)
 
 
 def coverate(train, test, N):
-    '''覆盖率'''
+    """覆盖率"""
+    print "%s: %s" % ('coverate', time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
+    file1 = open(os.path.abspath('.') + '/data/123.txt')
+    W = json.loads(file1.readlines()[0])
+    file1.close()
     hit = 0
     all = 0
+    recommend_items = set()
+    all_items = set()
+    for user in train.keys():
+        if user not in train:
+            continue
+        tu = [d['item'] for d in train[user]]
+        rank = recommend(user, train, W, N)
+        trainu = [d[0] for d in rank]
+        recommend_items |= set(trainu)
+        all_items |= set(tu)
+    hit = len(recommend_items)
+    all = len(all_items)
+    print hit
+    print all
+    print hit / (all * 1.0)
+    print '计算覆盖率耗时，{%fs}' % (time.time() - st)
+
+
+def popularity(train, test, N):
+    """流行率"""
+    print "%s: %s" % ('popularity', time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
+    file1 = open(os.path.abspath('.') + '/data/123.txt')
+    W = json.loads(file1.readlines()[0])
+    file1.close()
+    item_popularity = dict()
+    for user, datas in train.items():
+        for d in datas:
+            item = d['item']
+            if item not in item_popularity:
+                item_popularity[item] = 1
+            else:
+                item_popularity[item] += 1
+    ret = 0
+    n = 0
+    for user in train.keys():
+        rank = recommend(user, train, W, N)
+        for item, pui in rank:
+            ret += math.log(1 + item_popularity[item])
+            n += 1
+    ret /= n * 1.0
+    print ret
+    print '计算流行率耗时，{%fs}' % (time.time() - st)
 
 
 if __name__ == "__main__":
+    print time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
     path = os.path.abspath('.') + '/data/ml-100k/u.data'
     lines = []
     file = open(path)
@@ -150,10 +212,15 @@ if __name__ == "__main__":
             continue
 
     train, test = split_data(data, 8, 1, 4)
+    print time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
     # w = user_similarity(train)
-    # file1 = open(os.path.abspath('.') + '/data/123.txt', 'w')
-    # file1.write(json.dumps(w))
+    # print time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
+    # st = time.time()
+    # file1 = open(os.path.abspath('.') + '/data/123.data', 'w')
+    # file1.write(repr(w))
     # file1.close()
+    # print '写入耗时，{%fs}' % (time.time() - st)
+    st = time.time()
     train1 = dict()
     for data1 in train:
         user = data1['user']
@@ -168,9 +235,10 @@ if __name__ == "__main__":
             test1[user] = [data1]
         else:
             test1[user].append(data1)
+    print '整理数据耗时，{%fs}' % (time.time() - st)
 
-    try:
-        thread.start_new_thread(recall, (train1, test1, 10))
-        thread.start_new_thread(precision, (train1, test1, 10))
-    except:
-        print "Error: unable to start thread"
+    recall(train1, test1, 5)
+    precision(train1, test1, 5)
+    coverate(train1, test1, 5)
+    popularity(train1, test1, 5)
+

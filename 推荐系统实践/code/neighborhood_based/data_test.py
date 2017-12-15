@@ -35,5 +35,6 @@ if __name__ == "__main__":
     # comfirm_data(data, '1', '199')
     # comfirm_data(data, '1', '452')
     # comfirm_data(data, '100', '199')
-    cores = multiprocessing.cpu_count()
-    print cores
+    l1 = set([1, 2, 3])
+    l1 |= set([4, 2])
+    print l1
