@@ -38,6 +38,24 @@ def make_matrix(users, N, C):
                 C[u][v] += 1
 
 
+def make_matrix1(users, N, C):
+    """生成矩阵"""
+    for u in users:
+        if u not in N:
+            N[u] = 1
+        else:
+            N[u] += 1
+        if u not in C:
+            C[u] = dict()
+        for v in users:
+            if u == v:
+                continue
+            if v not in C[u]:
+                C[u][v] = 1
+            else:
+                C[u][v] += 1 / math.log(1 + len(users))
+
+
 def user_similarity(train):
     """计算用户相似度  利用余弦相似度"""
     # build inverse table for item_users
@@ -58,6 +76,40 @@ def user_similarity(train):
         make_matrix(users, N, C)
 
     # calculate final similarity matrix W  余弦相似度
+    W = dict()
+    for u, relate_users in C.items():
+        if u not in W:
+            W[u] = dict()
+        for v, cuv in relate_users.items():
+            W[u][v] = cuv / math.sqrt(N[u] * N[v]) * 1.0
+    print '计算用户相似度耗时，{%fs}' % (time.time() - st)
+    return W
+
+
+def user_similarity_advanced(train):
+    """计算用户相似度改进版
+            1
+      —————————————     通过该式惩罚了用户u与用户v共同兴趣列表中热门物品对他们相似度的影响
+      log1 + |N(i)|
+    """
+    # build inverse table for item_users
+    st = time.time()
+    item_users = dict()
+    for data in train:
+        user, item = data['user'], data['item']
+        if item not in item_users:
+            item_users[item] = set()
+        item_users[item].add(user)
+
+    # calculate co-rated items between users
+    item_users = {item: users for item, users in item_users.items() if len(item_users[user]) > 0}
+    C = dict()
+    N = dict()
+    for item, users in item_users.items():
+        # TODO 待优化 ，多线程 ，并行计算
+        make_matrix1(users, N, C)
+
+    # calculate final similarity matrix W  余弦相似度改进版
     W = dict()
     for u, relate_users in C.items():
         if u not in W:
@@ -92,7 +144,8 @@ def recommend(user, train, W, top):
 def recall(train, test, N):
     """召回率"""
     print "%s: %s" % ('recall', time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
-    file1 = open(os.path.abspath('.') + '/data/123.txt')
+    # file1 = open(os.path.abspath('.') + '/data/123.txt')
+    file1 = open(os.path.abspath('.') + '/data/1234.txt')
     W = json.loads(file1.readlines()[0])
     file1.close()
 
@@ -116,7 +169,8 @@ def recall(train, test, N):
 def precision(train, test, N):
     """准确率"""
     print "%s: %s" % ('precision', time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
-    file1 = open(os.path.abspath('.') + '/data/123.txt')
+    # file1 = open(os.path.abspath('.') + '/data/123.txt')
+    file1 = open(os.path.abspath('.') + '/data/1234.txt')
     W = json.loads(file1.readlines()[0])
     file1.close()
     hit = 0
@@ -140,7 +194,8 @@ def precision(train, test, N):
 def coverate(train, test, N):
     """覆盖率"""
     print "%s: %s" % ('coverate', time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
-    file1 = open(os.path.abspath('.') + '/data/123.txt')
+    # file1 = open(os.path.abspath('.') + '/data/123.txt')
+    file1 = open(os.path.abspath('.') + '/data/1234.txt')
     W = json.loads(file1.readlines()[0])
     file1.close()
     hit = 0
@@ -166,7 +221,8 @@ def coverate(train, test, N):
 def popularity(train, test, N):
     """流行率"""
     print "%s: %s" % ('popularity', time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
-    file1 = open(os.path.abspath('.') + '/data/123.txt')
+    # file1 = open(os.path.abspath('.') + '/data/123.txt')
+    file1 = open(os.path.abspath('.') + '/data/1234.txt')
     W = json.loads(file1.readlines()[0])
     file1.close()
     item_popularity = dict()
@@ -212,12 +268,16 @@ if __name__ == "__main__":
             continue
 
     train, test = split_data(data, 8, 1, 4)
-    print time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
-    # w = user_similarity(train)
+    # print time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
+    # # w = user_similarity(train)
+    # w = user_similarity_advanced(train)
     # print time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
     # st = time.time()
-    # file1 = open(os.path.abspath('.') + '/data/123.data', 'w')
-    # file1.write(repr(w))
+    # # file1 = open(os.path.abspath('.') + '/data/123.data', 'w')
+    # # file1.write(repr(w))
+    # # file1.close()
+    # file1 = open(os.path.abspath('.') + '/data/1234.txt', 'w')
+    # file1.write(json.dumps(w))
     # file1.close()
     # print '写入耗时，{%fs}' % (time.time() - st)
     st = time.time()
@@ -241,4 +301,3 @@ if __name__ == "__main__":
     precision(train1, test1, 5)
     coverate(train1, test1, 5)
     popularity(train1, test1, 5)
-
