@@ -30,7 +30,10 @@ def recall(train, test, N, filename, recommend):
         tu = [d['item'] for d in test[user]]
         rank = recommend(user, train, W, N)
         trainu = [d[0] for d in rank]
-        hit += len(list(set(tu).intersection(set(trainu))))
+        for item in trainu:
+            if item in tu:
+                hit += 1
+
         all += len(tu)
 
     print hit
@@ -55,7 +58,10 @@ def precision(train, test, N, filename, recommend):
         tu = [d['item'] for d in test[user]]
         rank = recommend(user, train, W, N)
         trainu = [d[0] for d in rank]
-        hit += len(list(set(tu).intersection(set(trainu))))
+        for item in trainu:
+            if item in tu:
+                hit += 1
+
         all += len(trainu)
 
     print hit
@@ -86,6 +92,7 @@ def coverate(train, test, N, filename, recommend):
         all_items |= set(tu)
     hit = len(recommend_items)
     all = len(all_items)
+
     print hit
     print all
     print hit / (all * 1.0)

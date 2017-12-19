@@ -76,6 +76,34 @@ def recommend(user, train, W, top):
     return rank
 
 
+def recommend_reasoned(user, train, W, top):
+    """带有推荐理由的推荐"""
+    rank = dict()
+    related_items = train[user]
+    for d in related_items:
+        i, rui = d['item'], d['rating']
+        topN = sorted(W[i].iteritems(), key=lambda d: d[1], reverse=True)[0:top]
+        for j, wij in topN:
+            if j in related_items:
+                continue
+
+            if j not in rank:
+                rank[j] = dict()
+                rank[j]['weight'] = wij * int(rui)
+            else:
+                rank[j]['weight'] += wij * int(rui)
+
+            if 'reason' not in rank[j]:
+                rank[j]['reason'] = dict()
+
+            if i not in rank[j]['reason']:
+                rank[j]['reason'][i] = wij * int(rui)
+            else:
+                rank[j]['reason'][i] += wij * int(rui)
+
+    return rank
+
+
 if __name__ == "__main__":
     """item based"""
     print time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
@@ -118,7 +146,12 @@ if __name__ == "__main__":
             test1[user].append(data1)
     print '整理数据耗时，{%fs}' % (time.time() - st)
 
+    file1 = open(data_path + 'item_similarity.txt')
+    W = json.loads(file1.readlines()[0])
+    file1.close()
+
+    print recommend_reasoned('3', train1, W, 5)
     # item_similarity(train1)
-    recall(train1, test1, 5, 'item_similarity.txt', recommend)
-    precision(train1, test1, 5, 'item_similarity.txt', recommend)
-    coverate(train1, test1, 5, 'item_similarity.txt', recommend)
+    # recall(train1, test1, 5, 'item_similarity.txt', recommend)
+    # precision(train1, test1, 5, 'item_similarity.txt', recommend)
+    # coverate(train1, test1, 5, 'item_similarity.txt', recommend)
